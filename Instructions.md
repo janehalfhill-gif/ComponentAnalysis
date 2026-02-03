@@ -1,13 +1,32 @@
 # Instructions
 
+## Setup (First Time Only)
+
+### Prerequisites
+- **Python 3.8+** installed
+- **Node.js 16+** and npm installed
+
+### Install Dependencies
+
+1. **Install Python dependencies** (from the repo root):
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Install Node.js dependencies** (from the repo root):
+   ```bash
+   cd electron
+   npm install
+   cd ..
+   ```
+
 ## Start the app
 
 From a terminal in the repo root (`ComponentAnalysis`):
 
-```
-cd C:\Python\ComponentryAnalysis\ComponentryAnalysis\ComponentAnalysis\electron
+```bash
+cd electron
 npm start
-
 ```
 
 ## Workflow
