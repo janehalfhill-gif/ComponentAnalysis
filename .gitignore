@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Electron / Node
+electron/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Data artifacts
+embeddings/
+grains_patches/
+results/
+*.npy
+
+# OS
+.DS_Store
+Thumbs.db

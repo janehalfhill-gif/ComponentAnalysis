@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ash Grain Analyzer</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand__icon">🌋</div>
+          <div>
+            <div class="brand__title">Ash Grain Componentry</div>
+            <div class="brand__subtitle">Automated microscopy analysis</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav__item nav__item--active" data-page="page-input">Dashboard</button>
+          <button class="nav__item" data-page="page-grains">
+            Grains
+            <span class="nav__dot" data-dot="grains"></span>
+          </button>
+          <button class="nav__item" data-page="page-embeddings">
+            Embeddings
+            <span class="nav__dot" data-dot="embeddings"></span>
+          </button>
+          <button class="nav__item" data-page="page-clusters">
+            Clusters
+            <span class="nav__dot" data-dot="clusters"></span>
+          </button>
+          <button class="nav__item" data-page="page-results">
+            Results
+            <span class="nav__dot" data-dot="results"></span>
+          </button>
+        </nav>
+
+        <div class="actions">
+          <button class="pill pill--ghost" id="resetBtn">Reset</button>
+          <button class="pill pill--ghost" id="exportBtn">Export</button>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="hero__content">
+          <p class="hero__text">
+            Built on Google&#39;s Xception (Extreme Inception), this app identifies clasts in microscopy
+            images and groups them into a user-defined number of clusters. Start by uploading images,
+            then run Extraction, Embeddings, and Clustering in order. Review the clusters to merge or
+            split them and assign labels, then train the model to improve predictions and compute
+            componentry. Export results when you are ready.
+          </p>
+        </div>
+        <div class="hero__stats">
+          <div class="stat">
+            <div class="stat__value">0</div>
+            <div class="stat__label">Images</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value">0</div>
+            <div class="stat__label">Grains</div>
+          </div>
+          <div class="stat">
+            <div class="stat__value">20</div>
+            <div class="stat__label">Clusters</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar" aria-hidden="true">
+          <span class="progress-bar__fill" id="progressFill"></span>
+        </div>
+        <div class="progress-value" id="progressText">0%</div>
+      </div>
+
+      <div class="content-area">
+        <div class="pages">
+          <section class="page page--active" id="page-input">
+            <div class="input-steps">
+              <section class="card card--upload" data-step="input" id="input-card">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Upload Images</div>
+                    <div class="card__subtitle">.tif, .png, .jpg, .jpeg</div>
+                  </div>
+                  <span class="chip">Step 1</span>
+                </div>
+                <label class="dropzone">
+                  <input id="imageInput" type="file" multiple accept=".tif,.tiff,.png,.jpg,.jpeg" />
+                  <div class="dropzone__icon">📁</div>
+                  <div class="dropzone__text">Drop files or click to browse</div>
+                  <div class="dropzone__meta" id="fileMeta">No files selected</div>
+                </label>
+                <ul class="file-list" id="fileList"></ul>
+              </section>
+
+              <div class="input-steps__row">
+                <section class="card is-disabled" data-step="step1" id="step1-card">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Grain Extraction</div>
+                    <div class="card__subtitle">Cropping + contour detection</div>
+                  </div>
+                  <span class="chip chip--purple">Step 2</span>
+                </div>
+                <div class="form-grid form-grid--stack step-form">
+                  <label class="field field--range">
+                    <span>Padding (crop margin) <span class="range-value" id="paddingValue">150</span></span>
+                    <input id="paddingInput" type="range" min="50" max="400" value="150" />
+                  </label>
+                  <label class="field field--range">
+                    <span>Crop scale factor <span class="range-value" id="scaleValue">1.6</span></span>
+                    <input id="scaleInput" type="range" min="1" max="3" value="1.6" step="0.1" />
+                  </label>
+                  <div class="field-row">
+                    <label class="field field--toggle">
+                      <span>Parallel extraction</span>
+                      <input id="parallelInput" type="checkbox" checked />
+                    </label>
+                    <label class="field field--inline">
+                      <span>Max workers</span>
+                      <input id="workersInput" type="number" min="1" max="64" value="8" />
+                    </label>
+                  </div>
+                </div>
+                <div class="step-actions">
+                  <button class="pill pill--secondary" data-action="extract" data-next="step2">
+                  Extract grains
+                  </button>
+                </div>
+              </section>
+
+              <section class="card is-disabled" data-step="step2" id="step2-card">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Embeddings</div>
+                    <div class="card__subtitle">Xception batch inference</div>
+                  </div>
+                  <span class="chip chip--blue">Step 3</span>
+                </div>
+                <div class="form-grid form-grid--stack step-form">
+                  <label class="field">
+                    <span>Embedding batch size</span>
+                    <select id="batchSizeInput">
+                      <option>16</option>
+                      <option selected>32</option>
+                      <option>64</option>
+                      <option>128</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Random seed</span>
+                    <input id="seedInput" type="number" min="0" max="2147483647" value="42" />
+                  </label>
+                  <label class="field">
+                    <span>Max grains for embeddings (0 = all)</span>
+                    <input id="maxGrainsInput" type="number" min="0" max="200000" value="5000" />
+                  </label>
+                </div>
+                <div class="step-actions">
+                  <button class="pill pill--secondary" data-action="embed" data-next="step3">
+                  Compute embeddings
+                  </button>
+                </div>
+              </section>
+
+              <section class="card card--compact is-disabled" data-step="step3" id="step3-card">
+                  <div class="card__header">
+                    <div>
+                      <div class="card__title">Clustering</div>
+                      <div class="card__subtitle">K-means grouping</div>
+                    </div>
+                    <span class="chip chip--green">Step 4</span>
+                  </div>
+                  <div class="form-grid form-grid--stack step-form">
+                    <label class="field">
+                      <span>Number of clusters</span>
+                      <input id="clustersInput" type="number" min="5" max="50" value="20" />
+                    </label>
+                  </div>
+                  <div class="step-actions">
+                    <button class="pill pill--secondary" data-action="cluster" data-next="step4">
+                    Cluster grains
+                    </button>
+                  </div>
+              </section>
+
+              <section class="card card--compact is-disabled" data-step="step4" id="step4-card">
+                  <div class="card__header">
+                    <div>
+                      <div class="card__title">Componentry</div>
+                      <div class="card__subtitle">Assign labels + export</div>
+                    </div>
+                    <span class="chip chip--orange">Step 5</span>
+                  </div>
+                  <div class="form-grid form-grid--stack step-form">
+                    <label class="field">
+                      <span>Classes</span>
+                      <input
+                        id="classesInput"
+                        type="text"
+                        value="ash, pumice, crystalline, lithic, unknown"
+                      />
+                    </label>
+                  <label class="field field--inline">
+                    <span>Target categories (optional)</span>
+                    <input id="targetCategoriesInput" type="number" min="0" max="50" value="0" />
+                  </label>
+                  <label class="field field--inline">
+                    <span>Background label</span>
+                    <input id="backgroundLabelInput" type="text" value="background" />
+                  </label>
+                  <label class="field field--toggle">
+                    <span>Ignore background in results</span>
+                    <input id="ignoreBackgroundInput" type="checkbox" checked />
+                  </label>
+                  <label class="field">
+                    <span>Training epochs</span>
+                    <input id="trainEpochsInput" type="number" min="1" max="50" value="5" />
+                  </label>
+                  <label class="field">
+                    <span>Training batch size</span>
+                    <input id="trainBatchInput" type="number" min="4" max="256" value="32" />
+                  </label>
+                  </div>
+                  <div class="action-row step-actions">
+                  <button class="pill pill--ghost" id="reviewClustersBtn">Review clusters</button>
+                  </div>
+              </section>
+              </div>
+            </div>
+          </section>
+
+          <section class="page" id="page-grains">
+            <div class="grid">
+              <section class="card card--wide">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Grain Gallery</div>
+                    <div class="card__subtitle">Sample grains extracted</div>
+                  </div>
+                  <div class="card__actions">
+                    <button class="pill pill--ghost pill--small" id="saveGrainsBtn">Save</button>
+                    <span class="chip chip--green">Preview</span>
+                  </div>
+                </div>
+                <div class="gallery" id="grainGallery">
+                  <div class="gallery__empty">No grains yet.</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="page-embeddings">
+            <div class="grid">
+              <section class="card card--wide">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Embedding Preview</div>
+                    <div class="card__subtitle">Grains used for embeddings</div>
+                  </div>
+                  <div class="card__actions">
+                    <button class="pill pill--ghost pill--small" id="saveEmbeddingsBtn">Save</button>
+                    <span class="chip chip--blue">Preview</span>
+                  </div>
+                </div>
+                <div class="gallery" id="embeddingGallery">
+                  <div class="gallery__empty">No embeddings yet.</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="page-clusters">
+            <div class="grid">
+              <section class="card card--wide">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Cluster Gallery</div>
+                    <div class="card__subtitle">Representative grains per cluster</div>
+                  </div>
+                  <div class="card__actions">
+                    <button class="pill pill--ghost pill--small" id="saveClustersBtn">Save</button>
+                    <span class="badge" id="clusterBadge">Ready</span>
+                  </div>
+                </div>
+                <div class="gallery" id="clusterGallery">
+                  <div class="gallery__empty">No clusters yet.</div>
+                </div>
+              </section>
+
+              <section class="card card--wide" id="clusterReviewCard">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Cluster Review</div>
+                    <div class="card__subtitle">Auto-assigned labels (editable)</div>
+                  </div>
+                  <span class="badge" id="clusterReviewBadge">Ready</span>
+                </div>
+                <div class="review-actions review-actions--stacked">
+                  <div class="review-section">
+                    <div class="review-section__label">Refine clusters</div>
+                    <div class="review-section__row">
+                      <button class="pill pill--ghost" id="mergeClustersBtn" type="button">Merge selected</button>
+                      <button class="pill pill--ghost" id="clearClusterSelectionBtn" type="button">Clear selection</button>
+                      <button class="pill pill--ghost" id="splitClusterBtn" type="button">Split selected</button>
+                    </div>
+                    <div class="review-section__split-row">
+                      <span class="review-section__split-label">Split into</span>
+                      <input id="splitKInput" type="number" min="2" max="10" value="2" />
+                    </div>
+                  </div>
+                  <div class="review-section">
+                    <div class="review-section__label">Train</div>
+                    <div class="review-section__row">
+                      <button class="pill pill--secondary" data-action="train" id="trainModelBtn">Train model</button>
+                      <button class="pill pill--secondary" data-action="predict" id="predictClassesBtn">
+                        Predict classes
+                      </button>
+                    </div>
+                  </div>
+                  <div class="review-section review-section--compute">
+                    <div class="review-section__label">Compute</div>
+                    <div class="review-section__row">
+                      <button class="pill pill--secondary pill--large" data-action="componentry" id="componentryStepBtn">
+                        Compute componentry
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="review-list" id="clusterReviewList">
+                  <div class="review-empty">Run clustering to review clusters.</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="page" id="page-results">
+            <div class="grid">
+              <section class="card card--wide">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Componentry Results</div>
+                    <div class="card__subtitle">Class percentages</div>
+                  </div>
+                  <div class="card__actions">
+                    <button class="pill pill--ghost pill--small" id="saveResultsBtn">Save</button>
+                    <span class="chip chip--orange">Results</span>
+                  </div>
+                </div>
+                <div class="results-table" id="componentryTable">
+                  <div class="results-table__empty">No results yet.</div>
+                </div>
+              </section>
+
+              <section class="card card--wide">
+                <div class="card__header">
+                  <div>
+                    <div class="card__title">Results Gallery</div>
+                    <div class="card__subtitle">Cluster samples for review</div>
+                  </div>
+                  <span class="chip chip--green">Preview</span>
+                </div>
+                <div class="gallery" id="resultsGallery">
+                  <div class="gallery__empty">No samples yet.</div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="output-dock" id="output-dock">
+        <div class="dock-tabs">
+          <button class="dock-tab dock-tab--active" data-dock="output">Run Output</button>
+          <button class="dock-tab" data-dock="validation">Input Validation</button>
+          <button class="dock-tab" data-dock="diagnostics">Diagnostics</button>
+          <button class="dock-toggle" id="dockToggleBtn" type="button" aria-expanded="true">Hide</button>
+        </div>
+        <div class="dock-panel dock-panel--active" data-dock-panel="output">
+          <div class="card__header">
+            <div>
+              <div class="card__title">Run Output</div>
+              <div class="card__subtitle">Status + results</div>
+            </div>
+          </div>
+          <pre class="results" id="resultsOutput">Waiting for input...</pre>
+        </div>
+        <div class="dock-panel" data-dock-panel="validation">
+          <div class="card__header">
+            <div>
+              <div class="card__title">Input Validation</div>
+              <div class="card__subtitle">Guardrails for uploads</div>
+            </div>
+            <span class="chip chip--teal">Safety</span>
+          </div>
+          <div class="form-grid form-grid--stack">
+            <label class="field">
+              <span>Max files per run</span>
+              <input id="maxFilesInput" type="number" min="1" max="1000" value="200" />
+            </label>
+            <label class="field">
+              <span>Max file size (MB)</span>
+              <input id="maxFileSizeInput" type="number" min="1" max="500" value="50" />
+            </label>
+            <label class="field">
+              <span>Min image dimension (px)</span>
+              <input id="minDimInput" type="number" min="64" max="5000" value="200" />
+            </label>
+            <label class="field">
+              <span>Min focus (Laplacian var)</span>
+              <input id="minFocusInput" type="number" min="0" max="500" value="30" />
+            </label>
+            <label class="field">
+              <span>Max total pixels (MP)</span>
+              <input id="maxPixelsInput" type="number" min="10" max="100000" value="2000" />
+            </label>
+          </div>
+        </div>
+        <div class="dock-panel" data-dock-panel="diagnostics">
+          <div class="card__header">
+            <div>
+              <div class="card__title">Diagnostics</div>
+              <div class="card__subtitle">Model + run metadata</div>
+            </div>
+            <span class="chip chip--teal">Admin</span>
+          </div>
+          <div class="diagnostics" id="diagnosticsPanel">
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Learning status</span>
+              <span class="diagnostics__value" id="learningStatus">No training (embeddings + clustering only)</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Embeddings cached</span>
+              <span class="diagnostics__value" id="embeddingsCached">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Images</span>
+              <span class="diagnostics__value" id="diagImages">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Grains</span>
+              <span class="diagnostics__value" id="diagGrains">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Clusters</span>
+              <span class="diagnostics__value" id="diagClusters">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Last run</span>
+              <span class="diagnostics__value" id="diagTimestamp">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Model last trained</span>
+              <span class="diagnostics__value" id="diagTrainedAt">—</span>
+            </div>
+            <div class="diagnostics__row">
+              <span class="diagnostics__label">Training samples</span>
+              <span class="diagnostics__value" id="diagTrainSamples">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="modal" id="imageModal" aria-hidden="true">
+        <div class="modal__backdrop" data-modal-close></div>
+        <div class="modal__content">
+          <button class="modal__close" data-modal-close>✕</button>
+          <img id="modalImage" alt="Grain preview" />
+        </div>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
