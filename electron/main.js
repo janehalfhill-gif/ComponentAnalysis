@@ -132,3 +132,16 @@ ipcMain.handle("backend:export-page", async (_event, payload) => {
   const exportBaseDir = filePaths[0];
   return await runBackendStep({ ...payload, exportBaseDir });
 });
+
+ipcMain.handle("backend:select-images", async (_event) => {
+  if (!mainWindow) return { ok: false, error: "Window not ready." };
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: "Select microscope images",
+    properties: ["openFile", "multiSelections"],
+    filters: [{ name: "Images", extensions: ["tif", "tiff", "png", "jpg", "jpeg"] }],
+  });
+  if (canceled || !filePaths?.length) {
+    return { ok: false, canceled: true, paths: [] };
+  }
+  return { ok: true, paths: filePaths };
+});

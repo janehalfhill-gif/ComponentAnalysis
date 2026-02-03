@@ -44,11 +44,38 @@ def extract_grains_from_image(
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    _, thresh = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV)
-    clean = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, np.ones((7,7), np.uint8), iterations=2)
-    clean = cv2.dilate(clean, np.ones((5,5), np.uint8), iterations=2)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
-    contours, _ = cv2.findContours(clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    kernel = np.ones((3, 3), np.uint8)
+    clean = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+    clean = cv2.morphologyEx(clean, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    # Watershed to split touching grains.
+    dist = cv2.distanceTransform(clean, cv2.DIST_L2, 5)
+    _, sure_fg = cv2.threshold(dist, 0.4 * dist.max(), 255, 0)
+    sure_fg = np.uint8(sure_fg)
+    sure_bg = cv2.dilate(clean, kernel, iterations=3)
+    unknown = cv2.subtract(sure_bg, sure_fg)
+    _, markers = cv2.connectedComponents(sure_fg)
+    markers = markers + 1
+    markers[unknown == 255] = 0
+    markers = cv2.watershed(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), markers)
+
+    contours = []
+    min_area = max(60, int(0.0001 * img.shape[0] * img.shape[1]))
+    for label_id in np.unique(markers):
+        if label_id <= 1:
+            continue
+        mask = np.uint8(markers == label_id) * 255
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in cnts:
+            if cv2.contourArea(cnt) < min_area:
+                continue
+            contours.append(cnt)
+
+    if not contours:
+        contours, _ = cv2.findContours(clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     grains = []
 

@@ -684,41 +684,66 @@ if (reviewClustersBtn && componentryStepBtn) {
   });
 }
 
-if (fileInput && fileMeta) {
-  fileInput.addEventListener("change", () => {
-    const files = fileInput.files ? Array.from(fileInput.files) : [];
-    const count = files.length;
+const setSelectedFiles = (files) => {
+  const count = files.length;
+  if (fileMeta) {
     fileMeta.textContent = count ? `${count} file(s) selected` : "No files selected";
-
-    if (fileList) {
-      fileList.innerHTML = "";
-      files.slice(0, 5).forEach((file) => {
-        const li = document.createElement("li");
-        li.textContent = file.name;
-        fileList.appendChild(li);
-      });
-      if (count > 5) {
-        const li = document.createElement("li");
-        li.textContent = `+ ${count - 5} more`;
-        fileList.appendChild(li);
-      }
+  }
+  if (fileList) {
+    fileList.innerHTML = "";
+    files.slice(0, 5).forEach((file) => {
+      const li = document.createElement("li");
+      li.textContent = file.name || file;
+      fileList.appendChild(li);
+    });
+    if (count > 5) {
+      const li = document.createElement("li");
+      li.textContent = `+ ${count - 5} more`;
+      fileList.appendChild(li);
     }
+  }
+  selectedPaths = files
+    .map((file) => (typeof file === "string" ? file : file.path))
+    .filter((value) => typeof value === "string" && value.length > 0);
+  if (count > 0) {
+    setCardEnabled("step1", true);
+  } else {
+    selectedPaths = [];
+    stepOrder.slice(1).forEach((stepId) => setCardEnabled(stepId, false));
+  }
+};
 
-    if (count > 0) {
-      selectedPaths = files
-        .map((file) => file.path)
-        .filter((value) => typeof value === "string" && value.length > 0);
-      if (selectedPaths.length !== count && resultsOutput) {
+const selectImagesWithDialog = async () => {
+  if (!window.backend?.selectImages) return false;
+  const result = await window.backend.selectImages();
+  if (!result?.ok) {
+    if (!result?.canceled && resultsOutput) {
+      resultsOutput.textContent = result?.error || "Failed to select images.";
+    }
+    return false;
+  }
+  const files = result.paths.map((path) => ({ name: path.split(/[/\\]/).pop(), path }));
+  setSelectedFiles(files);
+  return true;
+};
+
+if (fileInput && fileMeta) {
+  fileInput.addEventListener("change", async () => {
+    const files = fileInput.files ? Array.from(fileInput.files) : [];
+    if (files.length === 0) {
+      setSelectedFiles([]);
+      return;
+    }
+    setSelectedFiles(files);
+    if (selectedPaths.length !== files.length) {
+      const usedDialog = await selectImagesWithDialog();
+      if (!usedDialog && resultsOutput) {
         resultsOutput.textContent =
           "File paths are not available. Please select files via the Electron dialog.";
       }
-      setCardEnabled("step1", true);
-    } else {
-      selectedPaths = [];
-      stepOrder.slice(1).forEach((stepId) => setCardEnabled(stepId, false));
     }
 
-    updateStats({ images: count });
+    updateStats({ images: files.length });
     lastGrainSamples = [];
     lastClusterSamples = [];
     renderGallery(grainGallery, [], "No grains yet.");

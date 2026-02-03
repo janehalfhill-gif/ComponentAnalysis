@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld("backend", {
   onProgress: (handler) => ipcRenderer.on("backend:progress", (_event, data) => handler(data)),
   exportReport: (payload) => ipcRenderer.invoke("backend:export-report", payload),
   exportPage: (payload) => ipcRenderer.invoke("backend:export-page", payload),
+  selectImages: () => ipcRenderer.invoke("backend:select-images"),
   resetState: () => ipcRenderer.invoke("backend:reset"),
 });

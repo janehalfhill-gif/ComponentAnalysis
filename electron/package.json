@@ -4,7 +4,7 @@
   "description": "Electron wrapper for the Ash Grain Componentry Analyzer",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "npx electron ."
   },
   "devDependencies": {
     "electron": "^30.0.9"
