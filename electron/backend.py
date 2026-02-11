@@ -5,7 +5,9 @@ import traceback
 import hashlib
 import shutil
 import glob
+import subprocess
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 
@@ -13,6 +15,43 @@ try:
     import cv2  # noqa: F401
 except Exception:
     cv2 = None
+
+def _ensure_skimage():
+    try:
+        import skimage  # noqa: F401
+        return True
+    except Exception:
+        try:
+            subprocess.check_call([
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "scikit-image>=0.20.0",
+            ])
+            import skimage  # noqa: F401
+            return True
+        except Exception:
+            return False
+
+
+if not _ensure_skimage():
+    raise RuntimeError(
+        "Missing dependency: scikit-image. "
+        "Install it with 'python -m pip install scikit-image>=0.20.0'."
+    )
+
+
+# Cellpose is optional - we have a fallback to thresholding
+def _check_cellpose():
+    try:
+        import cellpose  # noqa: F401
+        return True
+    except Exception:
+        print("[backend] Cellpose not installed - will use threshold segmentation as fallback.")
+        return False
+
+_CELLPOSE_AVAILABLE = _check_cellpose()
 
 # Ensure repo module path is available (componentry_core.py lives in ComponentryAnalysis/)
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -113,7 +152,9 @@ def _build_cluster_samples(labels, seed=42):
         grain = grains[grain_idx] if 0 <= grain_idx < len(grains) else None
         if grain is None:
             continue
-        img = grain.get("image")
+        img = grain.get("preview")
+        if img is None:
+            img = grain.get("image")
         if img is None:
             continue
         path = os.path.join(SAMPLES_DIR, f"cluster_{cluster_id}.png")
@@ -405,14 +446,36 @@ def _run_extract(images, settings):
         raise RuntimeError("No valid image paths found.")
 
     _emit_progress("extract", 5, "Preparing grain extraction...")
+
+    def _progress(done, total, path):
+        if total <= 0:
+            return
+        percent = 5 + int((done / total) * 80)
+        name = os.path.basename(path) if path else f"{done}/{total}"
+        _emit_progress("extract", percent, f"Extracting grains ({done}/{total}): {name}")
+
+    def _stage_cb(stage, pct, msg):
+        _emit_progress("extract", pct, msg)
+
+    # Get model path for Cellpose
+    model_path = settings.get("modelPath") or None
+
     grains = extract_grains(
         valid_paths,
-        padding=int(settings.get("padding", 150)),
-        scale=float(settings.get("scale", 1.6)),
-        use_parallel=bool(settings.get("useParallel", True)),
+        padding=int(settings.get("padding", 20)),
+        scale=float(settings.get("scale", 1.4)),
+        min_size=int(settings.get("minSize", 15)),
+        edge_filter=float(settings.get("edgeFilter", 0.1)),
+        min_axis_px=int(settings.get("minAxisPx", 8)),
+        diameter=settings.get("diameter"),  # None = auto-detect
+        model_path=model_path,
+        use_gpu=bool(settings.get("useGpu", False)),
+        use_parallel=False,  # Don't parallelize Cellpose - it manages GPU internally
         max_workers=int(settings.get("maxWorkers", 8)),
         image_meta=image_meta,
         error_log=[],
+        progress_cb=_progress,
+        stage_cb=_stage_cb,
     )
     _emit_progress("extract", 90, "Saving grain samples...")
 
@@ -422,7 +485,9 @@ def _run_extract(images, settings):
     if cv2 is not None:
         for idx, grain in enumerate(grains[:12]):
             path = os.path.join(SAMPLES_DIR, f"grain_{idx}.png")
-            img = grain.get("image")
+            img = grain.get("preview")
+            if img is None:
+                img = grain.get("image")
             if img is None:
                 continue
             bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)

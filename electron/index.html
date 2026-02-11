@@ -42,6 +42,14 @@
         </nav>
 
         <div class="actions">
+          <button class="theme-toggle" id="themeToggleBtn" type="button" aria-pressed="false">
+            <span class="theme-toggle__track">
+              <span class="theme-toggle__glow"></span>
+              <span class="theme-toggle__bubbles"></span>
+            </span>
+            <span class="theme-toggle__thumb"></span>
+            <span class="theme-toggle__label">Toggle dark mode</span>
+          </button>
           <button class="pill pill--ghost" id="resetBtn">Reset</button>
           <button class="pill pill--ghost" id="exportBtn">Export</button>
         </div>
@@ -112,18 +120,30 @@
                 </div>
                 <div class="form-grid form-grid--stack step-form">
                   <label class="field field--range">
-                    <span>Padding (crop margin) <span class="range-value" id="paddingValue">150</span></span>
-                    <input id="paddingInput" type="range" min="50" max="400" value="150" />
+                    <span>Padding (crop margin) <span class="range-value" id="paddingValue">20</span></span>
+                    <input id="paddingInput" type="range" min="0" max="100" value="20" />
                   </label>
                   <label class="field field--range">
-                    <span>Crop scale factor <span class="range-value" id="scaleValue">1.6</span></span>
-                    <input id="scaleInput" type="range" min="1" max="3" value="1.6" step="0.1" />
+                    <span>Crop scale factor <span class="range-value" id="scaleValue">1.4</span></span>
+                    <input id="scaleInput" type="range" min="1" max="3" value="1.4" step="0.1" />
+                  </label>
+                  <label class="field">
+                    <span>Min grain size (Cellpose min_size)</span>
+                    <input id="minSizeInput" type="number" min="1" max="100" value="15" />
+                  </label>
+                  <label class="field">
+                    <span>Edge filter (0 = off, 0.21 = 21% edge excluded)</span>
+                    <input id="edgeFilterInput" type="number" min="0" max="0.5" step="0.01" value="0.21" />
+                  </label>
+                  <label class="field">
+                    <span>Min b-axis length (px)</span>
+                    <input id="minAxisPxInput" type="number" min="0" max="50" step="1" value="8" />
+                  </label>
+                  <label class="field field--toggle">
+                    <span>Use GPU (if available)</span>
+                    <input id="useGpuInput" type="checkbox" />
                   </label>
                   <div class="field-row">
-                    <label class="field field--toggle">
-                      <span>Parallel extraction</span>
-                      <input id="parallelInput" type="checkbox" checked />
-                    </label>
                     <label class="field field--inline">
                       <span>Max workers</span>
                       <input id="workersInput" type="number" min="1" max="64" value="8" />

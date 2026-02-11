@@ -15,6 +15,7 @@ const clusterCountEl = document.querySelector(".stat:nth-child(3) .stat__value")
 const progressBar = document.getElementById("progressBar");
 const progressFill = document.getElementById("progressFill");
 const progressText = document.getElementById("progressText");
+const progressWrap = document.querySelector(".progress-wrap");
 const grainGallery = document.getElementById("grainGallery");
 const embeddingGallery = document.getElementById("embeddingGallery");
 const clusterGallery = document.getElementById("clusterGallery");
@@ -46,6 +47,7 @@ const diagTimestampEl = document.getElementById("diagTimestamp");
 const diagTrainedAtEl = document.getElementById("diagTrainedAt");
 const diagTrainSamplesEl = document.getElementById("diagTrainSamples");
 const rangeInputs = document.querySelectorAll('input[type="range"]');
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 
 const stepOrder = ["input", "step1", "step2", "step3", "step4"];
 let selectedPaths = [];
@@ -62,6 +64,8 @@ let lastEmbedCached = null;
 let newClusterIds = new Set();
 let lastTrainingInfo = null;
 let lastBackgroundClass = "background";
+const THEME_KEY = "componentry-theme";
+const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)");
 
 const setNavDot = (name, active) => {
   const dot = document.querySelector(`[data-dot="${name}"]`);
@@ -314,9 +318,12 @@ const updateDiagnostics = () => {
 };
 
 const readSettings = () => ({
-  padding: Number(document.getElementById("paddingInput")?.value || 150),
-  scale: Number(document.getElementById("scaleInput")?.value || 1.6),
-  useParallel: Boolean(document.getElementById("parallelInput")?.checked),
+  padding: Number(document.getElementById("paddingInput")?.value || 20),
+  scale: Number(document.getElementById("scaleInput")?.value || 1.4),
+  minSize: Number(document.getElementById("minSizeInput")?.value || 15),
+  edgeFilter: Number(document.getElementById("edgeFilterInput")?.value || 0.21),
+  minAxisPx: Number(document.getElementById("minAxisPxInput")?.value || 8),
+  useGpu: Boolean(document.getElementById("useGpuInput")?.checked),
   maxWorkers: Number(document.getElementById("workersInput")?.value || 8),
   batchSize: Number(document.getElementById("batchSizeInput")?.value || 32),
   seed: Number(document.getElementById("seedInput")?.value || 42),
@@ -346,6 +353,47 @@ const updateBackgroundClass = () => {
 };
 
 updateBackgroundClass();
+
+const applyTheme = (theme) => {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  document.body.dataset.theme = nextTheme;
+  if (themeToggleBtn) {
+    const isDark = nextTheme === "dark";
+    themeToggleBtn.setAttribute("aria-pressed", isDark ? "true" : "false");
+    themeToggleBtn.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
+  }
+};
+
+const initTheme = () => {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved) {
+    applyTheme(saved);
+    return;
+  }
+  applyTheme(prefersDark?.matches ? "dark" : "light");
+};
+
+initTheme();
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const current = document.body.dataset.theme === "dark" ? "dark" : "light";
+    const nextTheme = current === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, nextTheme);
+    applyTheme(nextTheme);
+    rangeInputs.forEach((input) => updateRangeFill(input));
+  });
+}
+
+if (prefersDark?.addEventListener) {
+  prefersDark.addEventListener("change", (event) => {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (!saved) {
+      applyTheme(event.matches ? "dark" : "light");
+      rangeInputs.forEach((input) => updateRangeFill(input));
+    }
+  });
+}
 
 navItems.forEach((item) => {
   item.addEventListener("click", () => {
@@ -415,6 +463,7 @@ stepButtons.forEach((button) => {
     const originalText = button.textContent;
     button.textContent = "Running...";
     if (progressBar) progressBar.classList.add("is-active");
+    if (progressWrap) progressWrap.classList.add("is-active");
     setProgress(0);
     if (resultsOutput) {
       resultsOutput.textContent = `Running ${action}...`;
@@ -496,6 +545,7 @@ stepButtons.forEach((button) => {
       }
     } finally {
       if (progressBar) progressBar.classList.remove("is-active");
+      if (progressWrap) progressWrap.classList.remove("is-active");
       setProgress(100);
       button.disabled = false;
       button.textContent = originalText;
@@ -664,6 +714,7 @@ if (resetBtn && window.backend?.resetState) {
     if (fileInput) fileInput.value = "";
     setProgress(0);
     if (progressBar) progressBar.classList.remove("is-active");
+    if (progressWrap) progressWrap.classList.remove("is-active");
     lastEmbedCached = null;
     newClusterIds = new Set();
     selectedClusterIds = new Set();
@@ -770,12 +821,16 @@ if (window.backend?.onProgress) {
   window.backend.onProgress((data) => {
     if (!data || typeof data.percent === "undefined") return;
     if (progressBar) progressBar.classList.add("is-active");
+    if (progressWrap) progressWrap.classList.add("is-active");
     setProgress(data.percent);
     if (resultsOutput && data.message) {
       resultsOutput.textContent = data.message;
     }
-    if (data.percent >= 100 && progressBar) {
-      progressBar.classList.remove("is-active");
+    if (data.percent >= 100) {
+      setTimeout(() => {
+        if (progressBar) progressBar.classList.remove("is-active");
+        if (progressWrap) progressWrap.classList.remove("is-active");
+      }, 800);
     }
   });
 }
@@ -785,7 +840,12 @@ const updateRangeFill = (input) => {
   const max = Number(input.max || 100);
   const value = Number(input.value || 0);
   const percent = ((value - min) / (max - min)) * 100;
-  input.style.background = `linear-gradient(90deg, #7db6ff 0%, #8ed6b6 60%, #f5d38b 100%) 0/ ${percent}% 100% no-repeat, #e7ecf5`;
+  const styles = getComputedStyle(document.body);
+  const start = styles.getPropertyValue("--range-start").trim() || "#7db6ff";
+  const mid = styles.getPropertyValue("--range-mid").trim() || "#8ed6b6";
+  const end = styles.getPropertyValue("--range-end").trim() || "#f5d38b";
+  const base = styles.getPropertyValue("--range-base").trim() || "#e7ecf5";
+  input.style.background = `linear-gradient(90deg, ${start} 0%, ${mid} 60%, ${end} 100%) 0/ ${percent}% 100% no-repeat, ${base}`;
 };
 
 rangeInputs.forEach((input) => {

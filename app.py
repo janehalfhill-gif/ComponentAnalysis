@@ -166,7 +166,7 @@ if uploaded_files:
             st.write(pd.DataFrame(errors))
 
         # Show sample grains
-        sample = [g["image"] for g in grains[:20]]
+        sample = [g.get("preview", g["image"]) for g in grains[:20]]
         st.image(sample, width=120, caption=[f"Grain {i}" for i in range(len(sample))])
 
 if "grains" in st.session_state and st.button("🧠 Compute embeddings"):
