@@ -1,3 +1,12 @@
+# ComponentAnalysis
+Machine Learning Componentry Analyzer
+
+February 3rd, 2026
+
+This code was built using the Xception, short for Extreme Inception, Deep Learning model developed at Google.
+
+Using a suite of microscopic photos of sample clasts, this code will identify each clast in an image and then categorize them into a selected amount of groups. Once this process has been completed, the groups will be shared with the user who can then decide which groups are preferred, if any groups should be merged, or if any group needs to be further split.
+
 # Instructions
 
 ## Setup (First Time Only)
@@ -12,6 +21,20 @@
    ```bash
    pip install -r requirements.txt
    ```
+
+   > **Side note — use a virtual environment (if necessary):**
+   >
+   > If your system blocks global pip installs (PEP 668 / "externally managed"), create and use a venv:
+   >
+   > ```bash
+   > python3 -m venv .venv
+   > source .venv/bin/activate   # use `. .venv/bin/activate` on some shells
+   > python -m pip install --upgrade pip setuptools wheel
+   > python -m pip install -r requirements.txt
+   > deactivate
+   > ```
+   >
+   > Only use the venv when needed — the plain `pip install -r requirements.txt` is fine otherwise.
 
 2. **Install Node.js dependencies** (from the repo root):
    ```bash
